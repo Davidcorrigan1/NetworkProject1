@@ -39,9 +39,9 @@
 #    video to be taken regardless of any other conditions.
 #    The Blynk will show the latest video taken once it's uploaded to Firebase. 
 #
-# E. A simple static website will monitor the FireBase realtime database for new entries.
+# E. A node.js website will monitor the FireBase realtime database for new entries.
 #    If a new entry is found it will retrieve the corresponding video from the Storage
-#    and display on the website.
+#    and display on the website. A logon will be required to see the dashboard page with video.
 #----------------------------------------------------------------------------
 
 from bluepy.btle import Scanner, DefaultDelegate
@@ -138,8 +138,8 @@ def writeData(temp, lightOn, lightOff, childPresent, adultPresent, fanOn, fanOff
                              '&field6=%s' % (fanOn) + '&field7=%s' % (fanOff) +
                              '&field8=%s' % (videoURL))
     print(conn.read())
-    print("Data sent to ThingSpeak, temp =%d, lightOn = %s, lightOff= %s, fanOn= %s, fanOff= %s" 
-          % (temp, lightOn, lightOff, fanOn, fanOff))
+    print("Data sent to ThingSpeak, temp =%d, lightOn = %s, lightOff= %s, fanOn= %s, fanOff= %s, videoURL= %s" 
+          % (temp, lightOn, lightOff, fanOn, fanOff, videoURL))
     
     # Closing the connectionx
     conn.close()
@@ -177,6 +177,7 @@ def determineThingSpeakData(childInRoom, adultInRoom, videoURL):
         adultPresent = "N"
 
     writeData(temp, lightOn, lightOff, childPresent, adultPresent, fanOn, fanOff, videoURL)
+    
 
 #----------------------------------------------------------------------------
 # Determines what light setting are required, i.e. turn on or off!
@@ -398,6 +399,7 @@ if __name__ == "__main__":
         # calls the API to send this to the appropriate channel.
         #----------------------------------------------------------------------------
         determineThingSpeakData(child.childInRoom, adult.adultInRoom, videoURL)
+        videoURL = " "  #re-initialise this after loading to thingspeak
         
         print ("Blynk Video Trigger: ", blynkVideoTrigger)
         #----------------------------------------------------------------------------
