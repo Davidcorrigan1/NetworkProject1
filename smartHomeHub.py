@@ -17,7 +17,7 @@
 #    A Red LED connected to the Raspberry Pi will flash for 2 seconds prior to the video being 
 #    taken to be transparent about when videos are being taken.
 #
-# B. It continually checks the room temperture and the presence in the room. Based on 
+# B. It continually checks the room temperature and the presence in the room. Based on 
 #    the temperture and the presence of child or adult in the room will trigger a fan
 #    to turn on. Once the temperture drops below a certain value it will trigger the 
 #    fan to turn off. This is achieved by sending Fan on and off indicators to a Thingspeak
@@ -39,9 +39,10 @@
 #    video to be taken regardless of any other conditions.
 #    The Blynk will show the latest video taken once it's uploaded to Firebase. 
 #
-# E. A node.js website will monitor the FireBase realtime database for new entries.
-#    If a new entry is found it will retrieve the corresponding video from the Storage
-#    and display on the website. A logon will be required to see the dashboard page with video.
+# E. A node.js website dashboard will make an API call to thingspeak to retrieve the latest data.
+#    This will include the current temperature, the indicator to say an adult is present and also
+#    one to indicate if a child is present. It will also have the URL of the latest video taken.
+#
 #----------------------------------------------------------------------------
 
 from bluepy.btle import Scanner, DefaultDelegate
@@ -69,6 +70,11 @@ baseURL='https://api.thingspeak.com/update?api_key=%s' % WRITE_API_KEY
 # Blynk App authorisation key
 #----------------------------------------------------------------------------
 BLYNK_AUTH = 'xRgD5L7IUBd2IuDQvID2Dkd-1OS5GO8O'
+
+#----------------------------------------------------------------------------
+# Firebase Url key
+#----------------------------------------------------------------------------
+URL_token='?alt=media&token=3bda9c4f-4071-4669-a0a9-0a2c14a470df'
 
 #----------------------------------------------------------------------------
 # initialize Blynk
@@ -189,10 +195,10 @@ def handleLight(childInRoom, adultInRoom):
     # Light off between 8am and 5pm or if no one present
     timeNow = datetime.now()
 
-    if (timeNow <= todayAt(8) or timeNow >= todayAt(17)) and (childInRoom or adultInRoom):
+    if (timeNow <= todayAt(8) or timeNow >= todayAt(13)) and (childInRoom or adultInRoom):
         lightOn = 'Y'
         lightOff = 'N'
-    elif (timeNow > todayAt(8) and timeNow < todayAt(17) or (not childInRoom and not adultInRoom)):
+    elif (timeNow > todayAt(8) and timeNow < todayAt(13) or (not childInRoom and not adultInRoom)):
         lightOn = 'N'
         lightOff = 'Y'
     else:
@@ -334,7 +340,7 @@ if __name__ == "__main__":
     secondsSinceAdultInRoom = 0
     secondsSinceVideoTaken = 0
     blynkVideoTrigger = False
-    videoURL = " "
+    videoURL = "https://storage.googleapis.com/sensepi-27797.appspot.com/latestToday.mp4" + URL_token
 
     #----------------------------------------------------------------------------
     # This create a separate thread for the Blynk program and starts the it.
@@ -389,17 +395,12 @@ if __name__ == "__main__":
                 secondsSinceAdultInRoom = timeSinceAdultInRoom.total_seconds()
                 print ("No adult present in room for: ", secondsSinceAdultInRoom)
                 print ("Time Since Last Video: ", secondsSinceVideoTaken)
-            else:
-                secondsSinceAdultInRoom = 0
-                adult.lastAdultInRoomTime = datetime.today()
-                print ("Resetting timeSinceAdultInRoom, because no Child Present either")
 
         #----------------------------------------------------------------------------
         # This calls a method to determine the data to pass to ThingSpeak and then
         # calls the API to send this to the appropriate channel.
         #----------------------------------------------------------------------------
         determineThingSpeakData(child.childInRoom, adult.adultInRoom, videoURL)
-        videoURL = " "  #re-initialise this after loading to thingspeak
         
         print ("Blynk Video Trigger: ", blynkVideoTrigger)
         #----------------------------------------------------------------------------
@@ -418,7 +419,7 @@ if __name__ == "__main__":
         #      Blynk app. This will trigger a video regardless of any other conditions.
         #
         #----------------------------------------------------------------------------
-        if (child.childInRoom and not adult.adultInRoom and secondsSinceAdultInRoom > 180.0 and 
+        if (child.childInRoom and not adult.adultInRoom and secondsSinceAdultInRoom > 120.0 and 
             secondsSinceVideoTaken > 180.0) or (blynkVideoTrigger):
 
             blynkVideoTrigger = False
@@ -470,7 +471,7 @@ if __name__ == "__main__":
             # Store the MP4 video on firebase storage, and the 
             # name and time of the file the firebase realtime DB
             #----------------------------------------------------------------------------
-            videoURL = storeFileFB.store_file(videoLocMp4)
+            videoURL = storeFileFB.store_file(videoLocMp4) + URL_token
             storeFileFB.push_db(videoLocMp4, currentTime, child.childInRoom, adult.adultInRoom)
             print("files saved on firebase")
 
